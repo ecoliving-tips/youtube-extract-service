@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Header
+from fastapi import FastAPI, Query, HTTPException, BackgroundTasks
 from fastapi.responses import FileResponse, JSONResponse
 
 logger = logging.getLogger("yt-extract")
@@ -35,8 +35,8 @@ PLAYER_CLIENTS = [
     if c.strip()
 ] or ["mweb"]
 
-MAX_ATTEMPTS = max(1, int(os.getenv("YTDLP_MAX_ATTEMPTS", "4")))
-BACKOFF_BASE = max(1, int(os.getenv("YTDLP_BACKOFF_BASE_SEC", "5")))
+MAX_ATTEMPTS = max(1, int(os.getenv("YTDLP_MAX_ATTEMPTS", "2")))
+BACKOFF_BASE = max(1, int(os.getenv("YTDLP_BACKOFF_BASE_SEC", "2")))
 DOWNLOAD_TIMEOUT = max(30, int(os.getenv("DOWNLOAD_TIMEOUT_SEC", "120")))
 
 
@@ -63,6 +63,40 @@ def _init():
     _load_cookies_from_b64()
 
 
+@app.on_event("startup")
+async def _warm_cache():
+    asyncio.create_task(_run_warmup())
+
+
+async def _run_warmup():
+    cmd = [
+        "yt-dlp",
+        "--no-playlist",
+        "--simulate",
+        "--skip-download",
+        "--quiet",
+        "--force-ipv4",
+        "--cache-dir", "/app/.ytdlp-cache",
+        "--js-runtimes", "node",
+        "--socket-timeout", "15",
+        "--extractor-args", "youtube:player_client=mweb",
+        "https://www.youtube.com/watch?v=jNQXAC9IVRw",
+    ]
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.DEVNULL,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        _, stderr = await asyncio.wait_for(proc.communicate(), timeout=45)
+        if proc.returncode == 0:
+            logger.info("[warmup] EJS solver cache primed")
+        else:
+            logger.warning(f"[warmup] failed: {stderr.decode(errors='replace')[-200:]}")
+    except Exception as e:
+        logger.warning(f"[warmup] errored: {e}")
+
+
 @app.get("/health")
 async def health():
     pot_status = "unreachable"
@@ -79,6 +113,17 @@ async def health():
         "po_token_server": pot_status,
         "cookies_loaded": YT_COOKIES_FILE is not None,
     })
+
+
+class _CleanupTask:
+    def __init__(self, path: str):
+        self.path = path
+
+    async def __call__(self):
+        try:
+            os.unlink(self.path)
+        except OSError:
+            pass
 
 
 @app.get("/extract")
@@ -148,18 +193,11 @@ async def extract(
                     ext = os.path.splitext(tmp_path)[1].lower()
                     media_type = MIME_MAP.get(ext, "audio/mp4")
 
-                    def cleanup():
-                        try:
-                            os.unlink(tmp_path)
-                        except OSError:
-                            pass
-
-                    background_tasks.add_task(cleanup)
                     return FileResponse(
                         path=tmp_path,
                         media_type=media_type,
                         filename=f"{video_id}{ext}",
-                        background=cleanup,
+                        background=_CleanupTask(tmp_path),
                     )
                 else:
                     last_error = ValueError("Downloaded file too small or missing")
