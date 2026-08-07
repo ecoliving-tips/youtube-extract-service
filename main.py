@@ -12,6 +12,7 @@ app = FastAPI(title="YouTube Extract Service")
 
 VIDEO_ID_PATTERN = re.compile(r"^[A-Za-z0-9_-]{11}$")
 API_KEY = os.getenv("YT_EXTRACT_API_KEY")
+COOKIES_FILE = os.getenv("YT_COOKIES_FILE")
 
 MIME_MAP = {
     "mp3": "audio/mpeg",
@@ -19,6 +20,21 @@ MIME_MAP = {
     "webm": "audio/webm",
     "ogg": "audio/ogg",
     "opus": "audio/ogg",
+}
+
+BROWSER_HEADERS = {
+    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
+    "Accept-Language": "en-US,en;q=0.9",
+    "Accept-Encoding": "gzip, deflate, br",
+    "DNT": "1",
+    "Connection": "keep-alive",
+    "Upgrade-Insecure-Requests": "1",
+    "Sec-Fetch-Dest": "document",
+    "Sec-Fetch-Mode": "navigate",
+    "Sec-Fetch-Site": "none",
+    "Sec-Fetch-User": "?1",
+    "Cache-Control": "max-age=0",
 }
 
 
@@ -61,7 +77,12 @@ async def extract(
         "quiet": True,
         "no_warnings": True,
         "overwrites": True,
+        "http_headers": BROWSER_HEADERS,
+        "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
     }
+
+    if COOKIES_FILE and os.path.exists(COOKIES_FILE):
+        ydl_opts["cookiefile"] = COOKIES_FILE
 
     try:
         with yt_dlp.YoutubeDL(ydl_opts) as ydl:
