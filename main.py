@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-from fastapi import FastAPI, Query, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Header
 from fastapi.responses import FileResponse, JSONResponse
 
 logger = logging.getLogger("yt-extract")
