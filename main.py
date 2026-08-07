@@ -10,7 +10,7 @@ from pathlib import Path
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError
 
-from fastapi import FastAPI, Query, HTTPException, BackgroundTasks
+from fastapi import FastAPI, Query, HTTPException, BackgroundTasks, Header
 from fastapi.responses import FileResponse, JSONResponse
 
 logger = logging.getLogger("yt-extract")
@@ -85,7 +85,7 @@ async def health():
 async def extract(
     background_tasks: BackgroundTasks,
     video_id: str = Query(..., min_length=11, max_length=11),
-    x_api_key: str = Query(None),
+    x_api_key: str = Header(None),
 ):
     if API_KEY and x_api_key != API_KEY:
         raise HTTPException(status_code=401, detail="Invalid API key")
