@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: youtube-extract-service
+    runtime: docker
+    plan: free
+    region: oregon
+    branch: main
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: YT_EXTRACT_API_KEY
+        sync: false
+    healthCheckPath: /health
+    autoDeploy: true

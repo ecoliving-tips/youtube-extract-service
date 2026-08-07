@@ -1,0 +1,17 @@
+__pycache__/
+*.pyc
+.git
+.gitignore
+.env
+.venv/
+venv/
+node_modules/
+dist/
+build/
+*.egg-info/
+.eggs/
+.tox/
+.pytest_cache/
+.mypy_cache/
+.vscode/
+.idea/
