@@ -22,21 +22,6 @@ MIME_MAP = {
     "opus": "audio/ogg",
 }
 
-BROWSER_HEADERS = {
-    "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8",
-    "Accept-Language": "en-US,en;q=0.9",
-    "Accept-Encoding": "gzip, deflate, br",
-    "DNT": "1",
-    "Connection": "keep-alive",
-    "Upgrade-Insecure-Requests": "1",
-    "Sec-Fetch-Dest": "document",
-    "Sec-Fetch-Mode": "navigate",
-    "Sec-Fetch-Site": "none",
-    "Sec-Fetch-User": "?1",
-    "Cache-Control": "max-age=0",
-}
-
 
 async def verify_api_key(request: Request):
     if API_KEY is not None:
@@ -63,6 +48,11 @@ async def extract(
     url = f"https://www.youtube.com/watch?v={video_id}"
     tmpdir = tempfile.mkdtemp(prefix="ytx_")
 
+    tmp_cookie_file = None
+    if COOKIES_FILE and os.path.exists(COOKIES_FILE):
+        tmp_cookie_file = os.path.join(tmpdir, "cookies.txt")
+        shutil.copy2(COOKIES_FILE, tmp_cookie_file)
+
     def cleanup():
         try:
             shutil.rmtree(tmpdir, ignore_errors=True)
@@ -77,18 +67,29 @@ async def extract(
         "quiet": True,
         "no_warnings": True,
         "overwrites": True,
-        "http_headers": BROWSER_HEADERS,
         "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
     }
 
-    if COOKIES_FILE and os.path.exists(COOKIES_FILE):
-        ydl_opts["cookiefile"] = COOKIES_FILE
+    if tmp_cookie_file:
+        ydl_opts["cookiefile"] = tmp_cookie_file
+
+    def attempt_extract(opts):
+        with yt_dlp.YoutubeDL(opts) as ydl:
+            return ydl.extract_info(url, download=True)
 
     try:
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            info = ydl.extract_info(url, download=True)
-    except yt_dlp.utils.DownloadError as e:
-        raise HTTPException(status_code=500, detail=f"Download failed: {e}")
+        info = attempt_extract(ydl_opts)
+    except yt_dlp.utils.DownloadError:
+        if tmp_cookie_file:
+            ydl_opts.pop("cookiefile", None)
+            try:
+                info = attempt_extract(ydl_opts)
+            except yt_dlp.utils.DownloadError as e:
+                raise HTTPException(status_code=500, detail=f"Download failed: {e}")
+            except Exception as e:
+                raise HTTPException(status_code=500, detail=f"Extraction failed: {e}")
+        else:
+            raise HTTPException(status_code=500, detail="Download failed")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Extraction failed: {e}")
 

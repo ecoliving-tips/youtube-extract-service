@@ -11,3 +11,5 @@ dist/
 build/
 .idea/
 .vscode/
+cookies.txt
+export_cookies.py
