@@ -82,6 +82,8 @@ async def _run_warmup():
         "--extractor-args", "youtube:player_client=mweb",
         "https://www.youtube.com/watch?v=jNQXAC9IVRw",
     ]
+    if YT_COOKIES_FILE and os.path.exists(YT_COOKIES_FILE):
+        cmd.extend(["--cookies", YT_COOKIES_FILE])
     try:
         proc = await asyncio.create_subprocess_exec(
             *cmd,
