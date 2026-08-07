@@ -1,19 +1,45 @@
-FROM python:3.12-slim
+# ===== Stage 1: Build bgutil PO Token HTTP server =====
+FROM node:22-bookworm-slim AS bgutil-build
 
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    ffmpeg \
-    nodejs \
-    npm \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends git ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN git clone --single-branch --branch 1.3.1 --depth 1 \
+      https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git /tmp/bgutil && \
+    cd /tmp/bgutil/server && \
+    npm ci --omit=dev --no-audit --no-fund && \
+    cp -r node_modules /tmp/bgutil-node_modules && \
+    npm ci --no-audit --no-fund && \
+    npx tsc && \
+    rm -rf node_modules && \
+    mv /tmp/bgutil-node_modules node_modules
+
+# ===== Stage 2: Final image =====
+FROM python:3.11-slim
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+      ffmpeg curl ca-certificates gnupg supervisor && \
+    curl -fsSL https://deb.nodesource.com/setup_22.x | bash - && \
+    apt-get install -y --no-install-recommends nodejs && \
+    rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+
+COPY --from=bgutil-build /tmp/bgutil/server/build /app/bgutil-server/build
+COPY --from=bgutil-build /tmp/bgutil/server/node_modules /app/bgutil-server/node_modules
+COPY --from=bgutil-build /tmp/bgutil/server/package.json /app/bgutil-server/package.json
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY main.py .
+COPY start.sh .
+COPY supervisord.conf .
+RUN chmod +x start.sh
 
 EXPOSE 8080
 ENV PORT=8080
 
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
+CMD ["./start.sh"]

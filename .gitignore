@@ -13,3 +13,5 @@ build/
 .vscode/
 cookies.txt
 export_cookies.py
+.ytdlp-cache/
+*.log
