@@ -68,6 +68,7 @@ async def extract(
         "no_warnings": True,
         "overwrites": True,
         "extractor_args": {"youtube": {"player_client": ["android", "web"]}},
+        "js_runtimes": {"nodejs": {}},
     }
 
     if tmp_cookie_file:
