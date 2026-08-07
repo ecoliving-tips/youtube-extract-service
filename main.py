@@ -78,6 +78,7 @@ async def extract(
         with yt_dlp.YoutubeDL(opts) as ydl:
             return ydl.extract_info(url, download=True)
 
+    info = None
     try:
         info = attempt_extract(ydl_opts)
     except yt_dlp.utils.DownloadError:
