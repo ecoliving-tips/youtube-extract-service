@@ -167,8 +167,12 @@ async def _get_audio(app: FastAPI, video_id: str) -> tuple[ExtractionResult, boo
                     _evict_cache_entry(app, oldest_id, oldest)
                     app.state.cache.pop(oldest_id, None)
                 return result, False
-            except ProviderError:
-                logger.warning("audio provider failed", extra={"provider": provider.name})
+            except ProviderError as exc:
+                logger.warning(
+                    "audio provider failed: %s",
+                    exc,
+                    extra={"provider": provider.name, "video_id": video_id},
+                )
         raise HTTPException(status_code=502, detail="audio_extraction_failed")
 
 

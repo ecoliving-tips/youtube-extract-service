@@ -27,10 +27,14 @@ class HttpFallbackProvider:
             async with httpx.AsyncClient(timeout=self.timeout_seconds, follow_redirects=False) as client:
                 async with client.stream("GET", self.url, params={"video_id": video_id}, headers=headers) as response:
                     if response.status_code != 200:
-                        raise ProviderError("configured provider returned an error")
+                        raise ProviderError(
+                            f"configured provider returned HTTP {response.status_code}"
+                        )
                     media_type = response.headers.get("content-type", "").split(";", 1)[0].lower()
                     if not media_type.startswith("audio/"):
-                        raise ProviderError("configured provider returned a non-audio response")
+                        raise ProviderError(
+                            f"configured provider returned content type {media_type or 'missing'}"
+                        )
                     max_bytes = int(os.getenv("MAX_AUDIO_BYTES", "31457280"))
                     size = 0
                     with path.open("wb") as output:
