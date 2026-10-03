@@ -77,7 +77,11 @@ class YtDlpProvider:
             detail = stderr.decode(errors="replace")[-2000:]
             raise ProviderError(f"yt-dlp failed: {detail}")
 
-        candidates = [path for path in temp_dir.iterdir() if path.is_file()]
+        candidates = [
+            path
+            for path in temp_dir.iterdir()
+            if path.is_file() and path.name != "cookies.txt"
+        ]
         if len(candidates) != 1:
             shutil.rmtree(temp_dir, ignore_errors=True)
             raise ProviderError("yt-dlp returned no single audio file")
