@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import asyncio
+import base64
 import logging
 import os
 import re
 import secrets
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -56,7 +58,7 @@ class CachedAudio:
 
 def default_providers(settings: Settings) -> list[AudioProvider]:
     providers: list[AudioProvider] = []
-    cookie_file = os.getenv("YT_DLP_COOKIES_FILE", "")
+    cookie_file = _resolve_cookie_file()
     if cookie_file and Path(cookie_file).is_file():
         providers.append(
             YtDlpProvider(
@@ -81,6 +83,24 @@ def default_providers(settings: Settings) -> list[AudioProvider]:
             )
         )
     return providers
+
+
+def _resolve_cookie_file() -> str:
+    cookies_b64 = os.getenv("YT_COOKIES_B64", "").strip()
+    if cookies_b64:
+        try:
+            cookie_bytes = base64.b64decode("".join(cookies_b64.split()), validate=True)
+            file_descriptor, cookie_path = tempfile.mkstemp(
+                prefix="youtube-cookies-", suffix=".txt"
+            )
+            with os.fdopen(file_descriptor, "wb") as cookie_file:
+                cookie_file.write(cookie_bytes)
+            os.chmod(cookie_path, 0o600)
+            return cookie_path
+        except (OSError, ValueError) as exc:
+            logger.error("YT_COOKIES_B64 could not be decoded; cookie provider disabled: %s", exc)
+            return ""
+    return os.getenv("YT_DLP_COOKIES_FILE", "")
 
 
 def create_app(settings: Settings | None = None, providers: list[AudioProvider] | None = None) -> FastAPI:
