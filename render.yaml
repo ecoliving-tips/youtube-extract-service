@@ -1,0 +1,24 @@
+services:
+  - type: web
+    name: youtube-extract-service
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /healthz
+    envVars:
+      - key: EXTRACT_API_KEY
+        sync: false
+      - key: MAX_DURATION_SECONDS
+        value: "480"
+      - key: MAX_AUDIO_BYTES
+        value: "31457280"
+      - key: OUTPUT_AUDIO_BITRATE_KBPS
+        value: "96"
+      - key: EXTRACTION_TIMEOUT_SECONDS
+        value: "120"
+      - key: RATE_LIMIT_REQUESTS
+        value: "5"
+      - key: CACHE_TTL_SECONDS
+        value: "1800"
+      - key: CACHE_MAX_ITEMS
+        value: "2"

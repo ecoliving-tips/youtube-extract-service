@@ -1,0 +1,11 @@
+.git
+.gitignore
+.venv
+__pycache__
+.pytest_cache
+*.pyc
+.env
+cookies.txt
+cookies*.txt
+tests
+README.md
