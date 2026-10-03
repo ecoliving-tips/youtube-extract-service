@@ -55,12 +55,7 @@ class CachedAudio:
 
 
 def default_providers(settings: Settings) -> list[AudioProvider]:
-    providers: list[AudioProvider] = [
-        YtDlpProvider(
-            timeout_seconds=settings.request_timeout_seconds,
-            max_duration_seconds=settings.max_duration_seconds,
-        )
-    ]
+    providers: list[AudioProvider] = []
     cookie_file = os.getenv("YT_DLP_COOKIES_FILE", "")
     if cookie_file and Path(cookie_file).is_file():
         providers.append(
@@ -70,6 +65,12 @@ def default_providers(settings: Settings) -> list[AudioProvider]:
                 cookies_file=cookie_file,
             )
         )
+    providers.append(
+        YtDlpProvider(
+            timeout_seconds=settings.request_timeout_seconds,
+            max_duration_seconds=settings.max_duration_seconds,
+        )
+    )
     fallback_url = os.getenv("FALLBACK_PROVIDER_URL", "")
     if fallback_url:
         providers.append(

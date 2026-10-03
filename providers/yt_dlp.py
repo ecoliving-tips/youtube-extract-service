@@ -28,6 +28,14 @@ class YtDlpProvider:
     async def extract(self, video_id: str) -> ExtractionResult:
         temp_dir = Path(tempfile.mkdtemp(prefix="youtube-audio-"))
         output_template = str(temp_dir / "audio.%(ext)s")
+        cookie_file = None
+        if self.cookies_file:
+            cookie_file = temp_dir / "cookies.txt"
+            try:
+                shutil.copyfile(self.cookies_file, cookie_file)
+            except OSError as exc:
+                shutil.rmtree(temp_dir, ignore_errors=True)
+                raise ProviderError("configured cookie file could not be copied") from exc
         command = [
             self.executable,
             "--no-playlist",
@@ -46,8 +54,8 @@ class YtDlpProvider:
             output_template,
             f"https://www.youtube.com/watch?v={video_id}",
         ]
-        if self.cookies_file:
-            command[1:1] = ["--cookies", self.cookies_file]
+        if cookie_file:
+            command[1:1] = ["--cookies", str(cookie_file)]
 
         try:
             process = await asyncio.create_subprocess_exec(
