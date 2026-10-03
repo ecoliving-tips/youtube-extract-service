@@ -170,7 +170,8 @@ async def _get_audio(app: FastAPI, video_id: str) -> tuple[ExtractionResult, boo
                 return result, False
             except ProviderError as exc:
                 logger.warning(
-                    "audio provider failed: %s",
+                    "audio provider failed [%s]: %s",
+                    provider.name,
                     exc,
                     extra={"provider": provider.name, "video_id": video_id},
                 )

@@ -70,7 +70,7 @@ class YtDlpProvider:
 
         if process.returncode != 0:
             shutil.rmtree(temp_dir, ignore_errors=True)
-            detail = stderr.decode(errors="replace")[-300:]
+            detail = stderr.decode(errors="replace")[-2000:]
             raise ProviderError(f"yt-dlp failed: {detail}")
 
         candidates = [path for path in temp_dir.iterdir() if path.is_file()]
